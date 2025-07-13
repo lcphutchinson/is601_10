@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.app_settings import AppSettings
+from app.settings import GlobalSettings
 
 class DatabaseClient():
     """Wrapper object for SQLAlchemy connection configurations"""
@@ -14,7 +14,7 @@ class DatabaseClient():
 
     def __new__(cls) -> 'DatabaseClient': 
         if not cls._instance:
-            cls._instance = super(DatabaseClient, cls).__new__()
+            cls._instance = super(DatabaseClient, cls).__new__(cls)
         return cls._instance
 
     def __init__(self) -> None:
@@ -29,7 +29,7 @@ class DatabaseClient():
         if self._is_configured:
             return
         try:
-            self.engine = create_engine(AppSettings().database_url, echo=True)
+            self.engine = create_engine(GlobalSettings().DATABASE_URL, echo=True)
         except SQLAlchemyError as e:
             logs.critical(f"Error creating SQLAlchemy Engine: {e}")
             raise
