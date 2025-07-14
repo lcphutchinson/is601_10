@@ -23,7 +23,7 @@ class PasswordMixin(pyd.BaseModel):
     def validate_password(cls, values: dict) -> dict:
         password = values.get("password")
         if not password:
-            raise pyd.ValidationError("Password is required", model=cls)
+            raise ValueError("Password is required")
         if len(password) < 6:
             raise ValueError("Password must contain at least 6 characters")
         if not any(char.isupper() for char in password):
@@ -40,10 +40,11 @@ class UserLoginForm(PasswordMixin):
         description="Username or email",
         min_length=3,
         max_length=50,
-        example="janedow123"
+        example="janedoe123"
     )
 
 class UserCreate(UserForm, PasswordMixin):
-    """Schema for User Create"""
-    pass
+    """Formatted schema for User Create actions"""
+pass
+   
 
