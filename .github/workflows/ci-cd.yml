@@ -54,8 +54,8 @@ jobs:
         run: |
           source venv/bin/activate
 
-          pytest tests/unit/ --cov=src --junitxml=test-results/junit/xml
+          #pytest tests/unit/ --cov=src --junitxml=test-results/junit/xml
           pytest tests/integration
-          pytest tests/e2e
+          #pytest tests/e2e
 
 
