@@ -28,13 +28,9 @@ logger = logs.getLogger(__name__)
 @pytest.fixture(scope="session", autouse=True)
 def test_settings(request):
     """Provides a test-scoped settings singleton"""
-    if 'suspend_autouse' in request.keywords:
-        yield
-    else:
-        os.environ['DATABASE_URL'] = \
-            "postgresql://user:password@localhost:5432/test_db"
-        settings = GlobalSettings()
-        yield settings
+    # set any os.environ variables here
+    settings = GlobalSettings()
+    yield settings
 
 # =============================================================================
 # Database Fixtures
@@ -43,7 +39,6 @@ def test_settings(request):
 @pytest.fixture(scope="session", autouse=True)
 def test_db(request, test_settings):
     """Provides a test-scoped database configuration"""
-
     logger.info(f"Deploying Test Database at {test_settings.DATABASE_URL}...")
     test_client = DatabaseClient()
     engine = test_client.engine
@@ -110,9 +105,32 @@ def generate_user_data() -> dict[str, str]:
         "password": fake.password(length=12)
     }
 
+# =============================================================================
+# Command-Line Options & Test Collection
+# =============================================================================
 
+def pytest_addoption(parser):
+    """Adds command line options for pytest execution"""
+    parser.addoption(
+        "--preserve-db",
+        action="store_true",
+        default=False,
+        help="Keep test database records after test execution"
+    )
+    parser.addoption(
+        "--run-slow",
+        action="store_true",
+        default=False,
+        help="Run tests marked 'slow'"
+    )
 
-
+def pytest_collection_modifyitems(config, items):
+    """Automatically skip tests marked 'slow' unless '--run-slow' is passed"""
+    if not config.getoption("--run-slow"):
+        skip_slow = pytest.mark.skip(reason="test is marked 'slow': use --run-slow to run")
+        for item in items:
+            if "slow" in item.keywords:
+                item.add_marker(skip_slow)
 
 
 

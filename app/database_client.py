@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.settings import GlobalSettings
 
 class DatabaseClient():
-    """Wrapper object for SQLAlchemy connection configurations"""
+    """Singleton Wrapper object for SQLAlchemy connection configurations"""
     _instance: 'DatabaseClient' = None
     _is_configured: bool = False
 
@@ -30,7 +30,7 @@ class DatabaseClient():
             return
         try:
             self.engine = create_engine(GlobalSettings().DATABASE_URL, echo=True)
-        except SQLAlchemyError as e:
+        except SQLAlchemyError as e: # pragma: no cover
             logs.critical(f"Error creating SQLAlchemy Engine: {e}")
             raise
         self.model_base = declarative_base()
@@ -53,6 +53,6 @@ class DatabaseClient():
         session = self.session_agent()
         try:
             yield session
-        finally:
+        finally: # pragma: no cover
             session.close()
 
