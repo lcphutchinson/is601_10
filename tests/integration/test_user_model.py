@@ -92,6 +92,50 @@ def test_concurrent_user_create(db_session):
         f"{post_create_count - initial_count}, expected 3"
     )
 
+def test_user_create_unique_constraints(db_session):
+    """Tests the unique username and unique email constraints"""
+    user_1_data = generate_user_data()
+    user_2_data = generate_user_data()
+    user_3_data = generate_user_data()
+    user_1_data['username'] = user_2_data['username']
+    user_1_data['email'] = user_3_data['email']
+    user_1 = User(**user_1_data)
+    user_2 = User(**user_2_data)
+    user_3 = User(**user_3_data)
 
+    db_session.add(user_1)
+    db_session.commit()
 
+    db_session.add(user_2)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
 
+    db_session.add(user_3)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+@pytest.mark.parametrize(
+    "null_field", [
+        ("first_name"),
+        ("last_name"),
+        ("email"),
+        ("username"),
+        ("password"),
+    ]
+)
+def test_user_create_null_constraints(null_field: str, db_session):
+    """Tests error handling in cases of null input fields"""
+    user_data = generate_user_data()
+    user_data.pop(null_field)
+    user = User(**user_data)
+    db_session.add(user)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+def test_user_model_representation(test_user):
+    """Test the string representation of User model"""
+    expected = f"<User(name= {test_user.first_name} {test_user.last_name}, email= {test_user.email})>"
+    assert str(test_user) == expected

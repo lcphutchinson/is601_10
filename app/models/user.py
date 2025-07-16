@@ -47,8 +47,8 @@ class User(ModelBase):
         """
         return f"<User(name= {self.first_name} {self.last_name}, email= {self.email})>"
 
-    @staticmethod
-    def hash_password(password: str) -> str:
+    @classmethod
+    def hash_password(cls, password: str) -> str:
         """
         Hash a password using bcrypt.
 
@@ -62,7 +62,7 @@ class User(ModelBase):
         str
             a bcrypt-hashed string
         """
-        return self._pwd_context.hash(password)
+        return cls._pwd_context.hash(password)
 
     def verify_password(self, plain_password: str) -> bool:
         """
@@ -138,7 +138,7 @@ class User(ModelBase):
     @classmethod
     def register(cls, db, user_data: Dict[str, Any]) -> "User":
         """
-        Produces a User and adds it to the database as a user record
+        Produces a User and adds it to the database session as a user record
 
         Parameters
         ----------
@@ -187,7 +187,7 @@ class User(ModelBase):
             db.flush()
             return new_user
 
-        except ValidationError as e:
+        except ValidationError as e: # pragma: no cover
             raise ValueError(str(e))
         except ValueError:
             raise
