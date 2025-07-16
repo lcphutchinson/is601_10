@@ -95,9 +95,9 @@ deploy:
       with:
         push: true
         tags: |
-          lcphutchinson/601_10:latest
-          lcphutchinson/601_10:${{ github.sha }}
+          lcphutchinson/is601_10:latest
+          lcphutchinson/is601_10:${{ github.sha }}
         platforms: linux/amd64,linux/arm64
-        cache-from: type=registry,ref=lcphutchinson/601_10:cache
+        cache-from: type=registry,ref=lcphutchinson/is601_10:cache
         cache-to: type=inline,mode=max
 
