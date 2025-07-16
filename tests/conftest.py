@@ -7,9 +7,13 @@ import logging as logs
 
 from contextlib import contextmanager
 from faker import Faker
- 
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from typing import Generator, Dict, List
+
 from app.settings import GlobalSettings
 from app.database_client import DatabaseClient
+from app.models.user import User
 
 # =============================================================================
 # Logging Configuration
@@ -27,7 +31,7 @@ logger = logs.getLogger(__name__)
 
 @pytest.fixture(scope="session", autouse=True)
 def test_settings(request):
-    """Provides a test-scoped settings singleton"""
+    """Provides a session-scoped settings singleton"""
     # set any os.environ variables here
     settings = GlobalSettings()
     yield settings
@@ -38,7 +42,7 @@ def test_settings(request):
 
 @pytest.fixture(scope="session", autouse=True)
 def test_db(request, test_settings):
-    """Provides a test-scoped database configuration"""
+    """Provides a session-scoped database configuration"""
     logger.info(f"Deploying Test Database at {test_settings.DATABASE_URL}...")
     test_client = DatabaseClient()
     engine = test_client.engine
@@ -57,6 +61,33 @@ def test_db(request, test_settings):
         logger.info("Beginning database teardown...")
         test_client.model_base.metadata.drop_all(bind=engine)
         logger.info("Database teardown complete.")
+
+@pytest.fixture
+def db_session(request, test_db) -> Generator[Session, None, None]:
+    """
+    Provides a test-scoped databse session.
+    
+    Performs a teardown of all tables after each test,
+    unless --preserve-db is passed.
+    """
+    session = next(test_db.get_session())
+    try:
+        yield session
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        preserve_db = request.config.getoption("--preserve-db")
+        if preserve_db:
+            logger.info("Skipping table teardown. [--preserve_db]")
+        else:
+            logger.info("Beginning database teardown...")
+            for table in reversed(test_db.model_base.metadata.sorted_tables):
+                logger.info(f"Dropping table {table}")
+                session.execute(table.delete())
+            session.commit()
+        session.close()
 
 @contextmanager
 def managed_db_session(test_db):
@@ -82,11 +113,8 @@ def managed_db_session(test_db):
 # Data Record Fixtures & Methods
 # =============================================================================
 
-@pytest.fixture(scope="session", autouse=True)
-def data_faker(request):
-    """Provides a seeded generator for repeatable test data"""
-    Faker.seed(12345)
-    yield Faker()
+Faker.seed(12345)
+data_faker = Faker()
 
 def generate_user_data() -> dict[str, str]:
     """
@@ -98,12 +126,49 @@ def generate_user_data() -> dict[str, str]:
         A dict containing user fields with faked data
     """
     return {
-        "first_name": fake.first_name(),
-        "last_name": fake.last_name(),
-        "email": fake.unique.email(),
-        "username": fake.unique.user_name(),
-        "password": fake.password(length=12)
+        "first_name": data_faker.first_name(),
+        "last_name": data_faker.last_name(),
+        "email": data_faker.unique.email(),
+        "username": data_faker.unique.user_name(),
+        "password": data_faker.password(length=12)
     }
+
+@pytest.fixture
+def test_user(db_session: Session) -> User:
+    """Creates a single fake User"""
+    user_data = generate_user_data()
+    user = User(**user_data)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    logger.info(f"Created test user with ID: {user.id}")
+    return user
+
+@pytest.fixture
+def seed_users(db_session: Session, request) -> List[User]:
+    """
+    Creates and inserts multiple test users
+
+    Usage:
+        @pytest.mark.parametrize("seed_users", [10], indirect=True)
+        def test_many_users(seed_users):
+            # test logic
+    """
+    try:
+        num_users = request.param
+    except AttributeError:
+        num_users = 5
+
+    users = []
+    for _ in range(num_users):
+        user_data = generate_user_data()
+        user = User(**user_data)
+        users.append(user)
+        db_session.add(user)
+
+    db_session.commit()
+    logger.info(f"Seeded {len(users)} users into the test database.")
+    return users
 
 # =============================================================================
 # Command-Line Options & Test Collection

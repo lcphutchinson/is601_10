@@ -2,9 +2,10 @@
 import logging as logs
 
 from sqlalchemy import create_engine 
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
+from app import ModelBase
 from app.settings import GlobalSettings
 
 class DatabaseClient():
@@ -33,7 +34,7 @@ class DatabaseClient():
         except SQLAlchemyError as e: # pragma: no cover
             logs.critical(f"Error creating SQLAlchemy Engine: {e}")
             raise
-        self.model_base = declarative_base()
+        self.model_base = ModelBase
         self.session_agent = sessionmaker(
             autocommit=False,
             autoflush=False,
