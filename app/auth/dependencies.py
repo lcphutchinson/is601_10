@@ -2,7 +2,7 @@
 
 from fastapi import Depends, HTTPException, status
 
-from app.auth import oauth_scheme
+from app.auth import oauth2_scheme
 from app.models.user import User
 from app.schemas.user import UserRecord
 
