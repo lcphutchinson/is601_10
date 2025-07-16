@@ -59,7 +59,7 @@ jobs:
           pytest tests/e2e
 
   security:
-    needs: test
+    needs: smoke_test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
